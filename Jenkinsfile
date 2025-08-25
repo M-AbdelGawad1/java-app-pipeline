@@ -2,63 +2,42 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven-3.9.11'   // الاسم بالظبط زي اللي معرفته في Global Tool Configuration
-    }
-
-    parameters {
-        string(name: 'DOCKER_IMAGE', defaultValue: 'my-java-app', description: 'Docker Image Name')
-        string(name: 'DOCKER_TAG', defaultValue: 'latest', description: 'Docker Tag')
+        maven 'M3'       // اسم الـ Maven زي ما معرفه في Global Tool Configuration
+        jdk 'JDK-24'     // غيره لو عندك اسم تاني للـ JDK
     }
 
     stages {
-        stage('Build JAR') {
+        stage('Checkout') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                git branch: 'main', url: 'https://github.com/M-AbdelGawad1/java-app-pipeline.git'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build') {
             steps {
-                sh """
-                docker build -t ${params.DOCKER_IMAGE}:${params.DOCKER_TAG} .
-                """
+                sh 'mvn clean install'
             }
         }
 
-        stage('Docker Login') {
+        stage('Test') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
-                }
+                sh 'mvn test'
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Package') {
             steps {
-                sh "docker push ${params.DOCKER_IMAGE}:${params.DOCKER_TAG}"
-            }
-        }
-
-        stage('Parallel Tasks') {
-            parallel {
-                stage('Run Unit Tests') {
-                    steps {
-                        sh 'mvn test'
-                    }
-                }
-                stage('Code Quality') {
-                    steps {
-                        echo 'Run SonarQube or Linter here'
-                    }
-                }
+                sh 'mvn package'
             }
         }
     }
 
     post {
-        always {
-            echo 'Cleaning workspace...'
-            cleanWs()
+        success {
+            echo 'Build and tests completed successfully!'
+        }
+        failure {
+            echo 'Build failed!'
         }
     }
 }
