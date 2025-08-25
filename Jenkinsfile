@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven-3.9.11'   // الاسم بالظبط زي اللي معرفته في Global Tool Configuration
+    }
+
     parameters {
         string(name: 'DOCKER_IMAGE', defaultValue: 'my-java-app', description: 'Docker Image Name')
         string(name: 'DOCKER_TAG', defaultValue: 'latest', description: 'Docker Tag')
