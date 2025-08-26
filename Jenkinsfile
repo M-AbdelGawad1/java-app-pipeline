@@ -1,9 +1,16 @@
+@Library('jenkins-shared-lib') _
+
 pipeline {
     agent any
 
+    parameters {
+        string(name: 'DOCKER_IMAGE', defaultValue: 'my-java-app', description: 'Docker Image Name')
+        string(name: 'DOCKER_TAG', defaultValue: 'latest', description: 'Docker Tag')
+    }
+
     tools {
-        maven 'M3'       // اسم الـ Maven زي ما معرفه في Global Tool Configuration
-        jdk 'JDK-24'     // غيره لو عندك اسم تاني للـ JDK
+        maven 'M3'
+        jdk 'JDK-24'
     }
 
     stages {
@@ -13,15 +20,18 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            steps {
-                sh 'mvn clean install'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                sh 'mvn test'
+        stage('Build & Test') {
+            parallel {
+                stage('Build') {
+                    steps {
+                        sh 'mvn clean install'
+                    }
+                }
+                stage('Test') {
+                    steps {
+                        sh 'mvn test'
+                    }
+                }
             }
         }
 
@@ -30,14 +40,26 @@ pipeline {
                 sh 'mvn package'
             }
         }
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    dockerBuildAndPush(params.DOCKER_IMAGE, params.DOCKER_TAG)
+                }
+            }
+        }
     }
 
     post {
+        always {
+            echo 'Cleaning workspace...'
+            cleanWs()
+        }
         success {
-            echo 'Build and tests completed successfully!'
+            echo 'Pipeline completed successfully!'
         }
         failure {
-            echo 'Build failed!'
+            echo 'Pipeline failed!'
         }
     }
 }
